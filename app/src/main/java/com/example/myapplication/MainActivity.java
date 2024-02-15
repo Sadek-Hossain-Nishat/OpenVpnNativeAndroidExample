@@ -1,15 +1,23 @@
 package com.example.myapplication;
 
+import static android.system.Os.open;
+
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 
 import android.annotation.SuppressLint;
+import android.app.DownloadManager;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.net.VpnService;
 import android.os.Bundle;
+import android.os.Environment;
 import android.os.RemoteException;
 import android.util.Log;
 import android.view.View;
@@ -18,9 +26,13 @@ import android.widget.EditText;
 import android.widget.Toast;
 
 import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 
 import de.blinkt.openvpn.OpenVpnApi;
 import de.blinkt.openvpn.core.OpenVPNService;
@@ -45,12 +57,29 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
         connection = new CheckInternetConnection();
 
+
+        if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.READ_EXTERNAL_STORAGE)
+                != PackageManager.PERMISSION_GRANTED) {
+            // Permission is not granted, request it
+            ActivityCompat.requestPermissions(this,
+                    new String[]{android.Manifest.permission.READ_EXTERNAL_STORAGE},
+                    200);
+        } else {
+            // Permission already granted, perform desired operation
+            // Access the storage or perform other operations here
+            readFileData();
+        }
+
+
+
+
+
         server = new Server(
 
                 "usa.ovpn",
                 "freeopenvpn",
                 "636072992"
-        );;
+        );
 
         editText = findViewById(R.id.editTextText);
         button = findViewById(R.id.button);
@@ -85,6 +114,88 @@ public class MainActivity extends AppCompatActivity {
 
             }
         });
+    }
+
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == 200) {
+            // Check if the permission is granted
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                // Permission granted, perform desired operation
+                // Access the storage or perform other operations here
+                readFileData();
+            } else {
+                // Permission denied, handle accordingly
+                // You may show a message or disable functionality
+            }
+        }
+    }
+
+    private void readFileData()  {
+        File file = new File(Environment.getExternalStorageDirectory(), "usa.ovpn");
+
+        Log.d("readfiledata", "readFileData file exists: \n\n"+file.exists());
+        try {
+            FileInputStream fileInputStream = new FileInputStream(file);
+            BufferedReader br = new BufferedReader(new InputStreamReader(fileInputStream));
+            String config = "";
+            String line;
+
+            while (true) {
+                line = br.readLine();
+                if (line == null) break;
+                config += line + "\n";
+            }
+            br.readLine();
+            Log.d("readfiledata", "readFileData file data: \n\n"+config);
+        } catch (IOException e) {
+            e.printStackTrace();
+            Log.e("readfiledata", "readFileData ERROR: \n\n"+e.getMessage());
+        }
+
+
+        Log.d("readfiledata", "readFileData: "+ Environment.DIRECTORY_DOWNLOADS);
+
+//        for (File file:getFilesDir().listFiles()
+//             ) {
+//
+//            Log.d("readfiledata", "readFile Name: "+file.getPath());
+//
+//        }
+
+        /***
+
+        try {
+            // .ovpn file
+            FileInputStream conf = openFileInput(new File("/storage/emulated/0/Download/usa.ovpn").getAbsolutePath());
+
+            InputStreamReader isr = new InputStreamReader(conf);
+            BufferedReader br = new BufferedReader(isr);
+            String config = "";
+            String line;
+
+            while (true) {
+                line = br.readLine();
+                if (line == null) break;
+                config += line + "\n";
+            }
+
+            br.readLine();
+//            OpenVpnApi.startVpn(this, config, "USA", server.getOvpnUserName(), server.getOvpnUserPassword());
+
+            // Update log
+            Log.d("readfiledata", "readFileData: "+config);
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        ***/
+
+
+
     }
 
     private void closeVpn() {
